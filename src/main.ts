@@ -27,52 +27,203 @@ let camera = {
   y: 0,
 };
 let scale = 1;
+let timeScale = 1;
+
+type Vector = {
+  x: number;
+  y: number;
+};
+
+type Body = {
+  color: string;
+  position: Vector;
+  velocity: Vector;
+  mass: number;
+};
+
+const bodies: Body[] = [
+  {
+    color: "red",
+    mass: 10,
+    position: { x: 30, y: 30 },
+    velocity: { x: -2, y: 1 },
+  },
+  {
+    color: "yellow",
+    mass: 10,
+    position: { x: -30, y: -30 },
+    velocity: { x: 2, y: -1 },
+  },
+  {
+    color: "white",
+    mass: 1,
+    position: { x: -130, y: -40 },
+    velocity: { x: 2, y: -1 },
+  },
+];
 
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  drawCircle(0, 0, 20, "yellow");
-  drawCircle(Math.sin(timer / 15) * 50, Math.cos(timer / 15) * 50, 5, "white");
+  for (const body of bodies) {
+    const pos = body.position;
+    const vel = body.velocity;
+    for (const other of bodies.filter((b) => b !== body)) {
+      const diffX = other.position.x - pos.x;
+      const diffY = other.position.y - pos.y;
 
-  drawCircle(150, 150, 10, "white");
+      const distance = Math.hypot(diffX, diffY);
+      // const massDiff = other.mass / body.mass;
 
-  drawCircle(100, -100, 10, "white");
+      // vel.x += (diffX / distance) * massDiff * timeScale;
+      // vel.y += (diffY / distance) * massDiff * timeScale;
 
-  drawCircle(120, -50, 10, "white");
+      const force = (other.mass / body.mass / (distance * distance)) * 6.67;
+      vel.x += diffX * force * timeScale;
+      vel.y += diffY * force * timeScale;
+    }
+  }
 
-  drawCircle(-50, 200, 10, "white");
+  for (const body of bodies) {
+    const pos = body.position;
+    const vel = body.velocity;
+
+    let stroke: string | null = null;
+    if (choosedBody === body) {
+      stroke = "red";
+    }
+
+    drawCircle(
+      pos.x,
+      pos.y,
+      10 + body.mass * Math.sign(body.mass),
+      body.color,
+      stroke,
+      2
+    );
+    drawLine(pos.x, pos.y, pos.x + vel.x * 3, pos.y + vel.y * 3);
+
+    pos.x += vel.x * timeScale;
+    pos.y += vel.y * timeScale;
+  }
+
+  if (rmbDown) {
+    drawCircle(rmbPoint.x, rmbPoint.y, 5, "green");
+    drawLine(rmbPoint.x, rmbPoint.y, mousePos.x, mousePos.y, "yellow");
+  }
+
+  drawCircle(mousePos.x, mousePos.y, 5, "green");
+
+  // drawCircle(0, 0, 20, "yellow");
+  // drawCircle(Math.sin(timer / 15) * 50, Math.cos(timer / 15) * 50, 5, "white");
+
+  // drawCircle(150, 150, 10, "white");
+
+  // drawCircle(100, -100, 10, "white");
+
+  // drawCircle(120, -50, 10, "white");
+
+  // drawCircle(-50, 200, 10, "white");
 
   drawText(`Time: ${timer}`, 5, 10);
   drawText(`Camera: ${camera.x} ${camera.y}`, 5, 20);
   drawText(`Mouse: ${lmbDown}`, 5, 30);
   drawText(`Scale: ${scale}`, 5, 40);
-  drawRect(screenCenter.x - 4, screenCenter.y, 9, 1, 'green');
+  drawText(`Time: ${timeScale}`, 5, 50);
+  drawRect(screenCenter.x - 4, screenCenter.y, 9, 1, "green");
   drawRect(screenCenter.x, screenCenter.y - 4, 1, 9, "green");
 }
 
 const logicTimer = setInterval(() => {
   timer += 1;
   scale = clamp(scale, 0.1, 1000);
+  mousePos = cursorToCoords(cursorClientPos);
   draw();
 }, 16);
 
 let lmbDown = false;
+let rmbDown = false;
+let rmbPoint: Vector = { x: 0, y: 0 };
+let mousePos: Vector = { x: 0, y: 0 };
 
-window.addEventListener("mousedown", (e) => {
+let cursorClientPos: Vector = { x: 0, y: 0 };
+
+let choosedBody: Body | null = null;
+
+canvas.addEventListener("mousedown", (e) => {
+  e.preventDefault();
   if (e.button === 0) lmbDown = true;
+  if (e.button === 2) {
+    rmbDown = true;
+    rmbPoint = cursorToCoords(e);
+  }
+  if (e.button === 1) {
+    const previouslyChoosed = choosedBody;
+    choosedBody = null;
+    for (const body of bodies) {
+      const diffX = body.position.x - mousePos.x;
+      const diffY = body.position.y - mousePos.y;
+
+      const dist = 10 + body.mass;
+
+      if (Math.abs(diffX) < dist && Math.abs(diffY) < dist) {
+        choosedBody = body;
+      }
+    }
+    if (!choosedBody && previouslyChoosed) {
+      camera.x = -previouslyChoosed.position.x;
+      camera.y = -previouslyChoosed.position.y;
+    }
+  }
 });
-window.addEventListener("mouseup", () => (lmbDown = false));
-window.addEventListener("mousemove", (e) => {
+canvas.addEventListener("mouseup", (e) => {
+  if (e.button === 0) lmbDown = false;
+  if (e.button === 2) {
+    rmbDown = false;
+    const velocity: Vector = {
+      x: (rmbPoint.x - mousePos.x) / 10,
+      y: (rmbPoint.y - mousePos.y) / 10,
+    };
+    const newBody: Body = {
+      color: "white",
+      mass: 1,
+      position: { x: rmbPoint.x, y: rmbPoint.y },
+      velocity,
+    };
+    bodies.push(newBody);
+  }
+});
+canvas.addEventListener("mousemove", (e) => {
+  cursorClientPos = { x: e.clientX, y: e.clientY };
   const delta = { x: e.movementX, y: e.movementY };
   if (lmbDown) {
     camera.x += delta.x / scale;
     camera.y += delta.y / scale;
   }
 });
-window.addEventListener("wheel", (e) => {
+canvas.addEventListener("wheel", (e) => {
   const multiplier = e.shiftKey ? 0.2 : 0.05;
   scale += scale * multiplier * -Math.sign(e.deltaY);
 });
+const timeRangeInput = document.querySelector<HTMLInputElement>("#time-range")!;
+timeRangeInput.value = String(timeScale);
+timeRangeInput.addEventListener("input", function (e) {
+  timeScale = Number(this.value);
+});
+
+function cursorToCoords(cursorPos: Vector): Vector {
+  const offX = choosedBody
+    ? -choosedBody.position.x - choosedBody.velocity.x
+    : camera.x;
+  const offY = choosedBody
+    ? -choosedBody.position.y - choosedBody.velocity.y
+    : camera.y;
+  return {
+    x: (cursorPos.x - screenCenter.x) / scale - offX,
+    y: (cursorPos.y - screenCenter.y) / scale - offY,
+  };
+}
+
 function drawText(text: string, x: number, y: number, color = "white") {
   ctx.fillStyle = color;
   ctx.fillText(text, x, y);
@@ -99,17 +250,10 @@ function drawCircle(
   radius: number,
   fill?: string | CanvasGradient | CanvasPattern | null,
   stroke?: string | CanvasGradient | CanvasPattern | null,
-  strokeWidth = 0
+  strokeWidth = 1
 ) {
   ctx.beginPath();
-  ctx.arc(
-    screenCenter.x + (x + camera.x) * scale,
-    screenCenter.y + (y + camera.y) * scale,
-    radius * scale,
-    0,
-    2 * Math.PI,
-    false
-  );
+  ctx.arc(visualX(x), visualY(y), radius * scale, 0, 2 * Math.PI, false);
   if (fill) {
     ctx.fillStyle = fill;
     ctx.fill();
@@ -119,4 +263,27 @@ function drawCircle(
     ctx.strokeStyle = stroke;
     ctx.stroke();
   }
+}
+
+function visualX(x: number) {
+  const offsetX = choosedBody ? -choosedBody.position.x : camera.x;
+  return screenCenter.x + (x + offsetX) * scale;
+}
+function visualY(y: number) {
+  const offsetY = choosedBody ? -choosedBody.position.y : camera.y;
+  return screenCenter.y + (y + offsetY) * scale;
+}
+
+function drawLine(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  color = "blue"
+) {
+  ctx.beginPath();
+  ctx.moveTo(visualX(x1), visualY(y1));
+  ctx.lineTo(visualX(x2), visualY(y2));
+  ctx.strokeStyle = color;
+  ctx.stroke();
 }

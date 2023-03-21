@@ -7,7 +7,11 @@
     <title>Vite + TS</title>
   </head>
   <body>
-    <canvas id="app"></canvas>
+    <canvas id="app" oncontextmenu="return false;"></canvas>
+    <div id="controlls">
+      <label for="time-range">Time</label>
+      <input type="range" min="0" max="5" id="time-range" value="1" step="0.1">
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

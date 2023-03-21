@@ -28,3 +28,13 @@ html, body, canvas {
   padding: 0;
   overflow: hidden;
 }
+
+#controlls {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+#controlls input {
+  width: 20rem;
+}
