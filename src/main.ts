@@ -57,8 +57,8 @@ const bodies: Body[] = [
   {
     color: "white",
     mass: 1,
-    position: { x: -130, y: -40 },
-    velocity: { x: 2, y: -1 },
+    position: { x: -250, y: -40 },
+    velocity: { x: 2, y: -10 },
   },
 ];
 
@@ -134,7 +134,7 @@ function draw() {
   drawRect(screenCenter.x, screenCenter.y - 4, 1, 9, "green");
 }
 
-const logicTimer = setInterval(() => {
+setInterval(() => {
   timer += 1;
   scale = clamp(scale, 0.1, 1000);
   mousePos = cursorToCoords(cursorClientPos);
@@ -207,7 +207,7 @@ canvas.addEventListener("wheel", (e) => {
 });
 const timeRangeInput = document.querySelector<HTMLInputElement>("#time-range")!;
 timeRangeInput.value = String(timeScale);
-timeRangeInput.addEventListener("input", function (e) {
+timeRangeInput.addEventListener("input", function () {
   timeScale = Number(this.value);
 });
 
