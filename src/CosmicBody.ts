@@ -1,12 +1,13 @@
+import { Draw, Drawable, Viewport } from "./EngineLogic";
 import { Vector } from "./Vector";
 
-export class CosmicBody {
-  name?: string | null;
-  color: string;
-  mass: number;
+export class CosmicBody extends Drawable {
+  #name?: string | null;
+  #color: string;
+  #mass: number;
 
-  position: Vector;
-  velocity: Vector;
+  #position: Vector;
+  #velocity: Vector;
 
   constructor(
     color: string,
@@ -15,11 +16,18 @@ export class CosmicBody {
     velocity = Vector.zero(),
     name = null
   ) {
-    this.name = name;
-    this.color = color;
-    this.mass = mass;
+    super();
 
-    this.position = position;
-    this.velocity = velocity;
+    this.#name = name;
+    this.#color = color;
+    this.#mass = mass;
+
+    this.#position = position;
+    this.#velocity = velocity;
+  }
+
+  draw(vp: Viewport): void {
+    const viewPos = vp.worldToViewport(this.#position);
+    Draw.circle(viewPos.pos, 10 * vp.scale, 'white');
   }
 }

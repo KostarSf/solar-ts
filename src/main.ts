@@ -1,8 +1,11 @@
-import { CosmicBody } from "./CosmicBody";
+import { CosmicBody } from "./OldCosmicBody";
 import "./style.css";
-import { Vector } from "./Vector";
 
 const canvas = document.querySelector<HTMLCanvasElement>("#app")!;
+
+
+import { Vector } from "./Vector";
+
 const ctx = canvas.getContext("2d")!;
 
 let screenCenter = Vector.zero();

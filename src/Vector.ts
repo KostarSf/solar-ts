@@ -1,6 +1,12 @@
+import { Position } from "./EngineLogic";
+
 export class Vector {
   x: number;
   y: number;
+
+  get pos(): Position {
+    return { x: this.x, y: this.y };
+  }
 
   constructor(x: number, y?: number) {
     this.x = x;
@@ -19,6 +25,10 @@ export class Vector {
 
   static distance(difference: Vector) {
     return Math.hypot(difference.x, difference.y);
+  }
+
+  toString() {
+    return `{ x: ${this.x}, y: ${this.y} }`;
   }
 
   set(x: number | Vector, y?: number) {
