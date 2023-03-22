@@ -1,4 +1,4 @@
-import { Vector } from "./Vector";
+import { Vector } from "./engine/Vector";
 
 export class CosmicBody {
   name?: string | null;

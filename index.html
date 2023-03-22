@@ -9,8 +9,20 @@
   <body>
     <canvas id="app" oncontextmenu="return false;"></canvas>
     <div id="controlls">
-      <label for="time-range">Time</label>
-      <input type="range" min="0" max="5" id="time-range" value="1" step="0.1">
+      <p>
+        <label for="time-range">Time</label>
+        <input
+          type="range"
+          min="0"
+          max="5"
+          id="time-range"
+          value="1"
+          step="0.1"
+        />
+      </p>
+      <p class="text-right">
+        <button type="button" id="btn-pause">Пауза</button>
+      </p>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

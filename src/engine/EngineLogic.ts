@@ -1,53 +1,92 @@
-import { CosmicBody } from "./CosmicBody";
 import { Vector } from "./Vector";
 
 export class EngineLogic {
   #pause = false;
 
   #timerLoop: number;
-  #tick = 0;
+  #timer = 0;
 
   #viewport: Viewport;
   #scene = new Scene();
 
-  get scene() { return this.#scene }
+  #timeScale = 1;
+
+  get timer() {
+    return this.#timer;
+  }
+
+  get timeScale() {
+    return this.#timeScale;
+  }
+
+  get scene() {
+    return this.#scene;
+  }
 
   constructor(canvas: HTMLCanvasElement) {
-    this.#viewport = new Viewport(canvas, this.#scene);
+    this.#viewport = new Viewport(canvas, this);
+    this.#timerLoop = setInterval(() => this.tick(), 15);
 
-    this.#timerLoop = setInterval(() => this.tick(), 100);
+    console.log(this.constructor === Array);
+
+    document.querySelector("#btn-pause")!.addEventListener("click", () => {
+      this.#pause = !this.#pause;
+    });
+
+    const timeInput = document.querySelector<HTMLInputElement>("#time-range")!;
+    timeInput.value = String(this.#timeScale);
+    const that = this;
+    timeInput.addEventListener('input', function() {
+      that.#timeScale = Number(this.value);
+    })
   }
 
   private tick(this: EngineLogic) {
-    this.#tick += 1;
-
     if (this.#pause) return;
+    this.#timer += 1;
+
+    for (const object of this.#scene.objects) {
+      object.tick(this);
+    }
+
+    for (const object of this.#scene.objects) {
+      object.tickEnd(this);
+    }
+
+    this.#scene.removeMarkedObjects();
   }
 
-  public pause(this: EngineLogic, value: boolean) {
+  public setPause(this: EngineLogic, value: boolean) {
     this.#pause = value;
   }
 }
 
-class Scene {
-  #objects: Drawable[] = [];
+export class Scene {
+  #objects: GameObject[] = [];
 
   get objects() {
     return this.#objects;
   }
 
-  public addObject(object: Drawable) {
+  public addObject(object: GameObject) {
     this.#objects.push(object);
+  }
+
+  public removeMarkedObjects() {
+    this.#objects = this.#objects.filter((o) => !o.removed);
   }
 }
 
-export class Drawable {
+export class GameObject {
+  removed = false;
   draw(vp: Viewport) {}
+  tick(engine: EngineLogic) {}
+  tickEnd(engine: EngineLogic) {}
 }
 
 export class Viewport {
   #position = Vector.zero();
-  #scale = 1;
+  #scale = 0.2;
 
   get scale() {
     return this.#scale;
@@ -73,8 +112,9 @@ export class Viewport {
   #lmbPressed = false;
 
   #currentScene: Scene;
+  #engine: EngineLogic;
 
-  constructor(canvas: HTMLCanvasElement, currentScene: Scene) {
+  constructor(canvas: HTMLCanvasElement, engine: EngineLogic) {
     this.#canvas = canvas;
     this.#ctx = canvas.getContext("2d")!;
 
@@ -87,8 +127,6 @@ export class Viewport {
       if (this.#lmbPressed) {
         this.#position.add(Vector.copy(this.#cursorDelta).div(this.#scale));
       }
-      console.log(`Delta: ${this.#cursorDelta.toString()}`);
-
     });
 
     canvas.addEventListener("mousedown", (e) => {
@@ -111,7 +149,8 @@ export class Viewport {
       this.#scale = Math.min(Math.max(this.#scale, 0.1), 1000);
     });
 
-    this.#currentScene = currentScene;
+    this.#currentScene = engine.scene;
+    this.#engine = engine;
     this.requestFrameDraw(0);
   }
 
@@ -144,7 +183,7 @@ export class Viewport {
 
   private drawGUI(this: Viewport) {
     Draw.setContext(this.#ctx);
-    Draw.guiText(`FPS: ${this.#fps}`, {x: 0, y: 0});
+    Draw.guiText(`FPS: ${this.#fps}`, { x: 0, y: 0 });
     Draw.guiText(`Screen: ${this.#width}x${this.#height}`, { x: 0, y: 15 });
     Draw.guiText(`Camera pos: ${this.#position.x}:${this.#position.y}`, {
       x: 0,
@@ -159,18 +198,27 @@ export class Viewport {
       `Cursor delta: ${this.#cursorDelta.x}:${this.#cursorDelta.y}`,
       { x: 0, y: 75 }
     );
+    Draw.guiText(
+      `Objects: ${this.#currentScene.objects.length}`,
+      { x: 0, y: 90 }
+    );
+    Draw.guiText(`Time scale: ${this.#engine.timeScale}`, {
+      x: 0,
+      y: 105,
+    });
   }
 
   public worldToViewport(position: Vector) {
-    return Vector.copy(position)
-      .add(this.#position).add(this.#center);
+    return Vector.copy(this.#center).add(
+      Vector.copy(position).add(this.#position).mult(this.#scale)
+    );
   }
 }
 
 export type Position = {
   x: number;
   y: number;
-}
+};
 
 export class Draw {
   static #context: CanvasRenderingContext2D;
@@ -179,17 +227,16 @@ export class Draw {
     this.#context = ctx;
   }
 
-  static guiText(
-    text: string,
-    pos: Position,
-    color = "white",
-    size = 12
-  ) {
+  static guiText(text: string, pos: Position, color = "white", size = 12) {
     const ctx = Draw.#context;
 
     ctx.fillStyle = color;
     ctx.font = `${size}px sans-serif`;
     ctx.fillText(text, pos.x + 4, pos.y + size);
+  }
+
+  static setAlpha(amount: number) {
+    this.#context.globalAlpha = amount;
   }
 
   static circle(
@@ -214,8 +261,3 @@ export class Draw {
     }
   }
 }
-
-const canvas = document.querySelector<HTMLCanvasElement>("#app")!;
-const engine = new EngineLogic(canvas);
-
-engine.scene.addObject(new CosmicBody("white", 10));

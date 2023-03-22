@@ -10,10 +10,14 @@ export class Vector {
 
   constructor(x: number, y?: number) {
     this.x = x;
-    this.y = y ? y : x;
+    this.y = typeof y === 'number' ? y : x;
   }
 
   static zero = () => new Vector(0, 0);
+
+  static fromPos(position: Position) {
+    return new Vector(position.x, position.y);
+  }
 
   static copy(vector: Vector) {
     return new Vector(vector.x, vector.y);
@@ -77,15 +81,14 @@ export class Vector {
   }
 }
 
-function getFuncValues(x: any, y?: any) {
+function getFuncValues(x: number | Vector, y?: number) {
   if (isVector(x)) {
     return Vector.copy(x);
-  } else if (typeof x === "number" && (!y || typeof y === "number")) {
-    return new Vector(x, y ? y : x);
+  } else {
+    return new Vector(x, y);
   }
-  return null;
 }
 
 function isVector(val: any): val is Vector {
-  return val && typeof val.x === "number" && typeof val.y === "number";
+  return typeof val === 'object' && typeof val.x === "number" && typeof val.y === "number";
 }

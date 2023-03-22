@@ -38,3 +38,7 @@ html, body, canvas {
 #controlls input {
   width: 20rem;
 }
+
+.text-right {
+  text-align: right;
+}
