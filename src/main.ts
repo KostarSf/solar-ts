@@ -1,65 +1,47 @@
+import { CosmicBody } from "./CosmicBody";
 import "./style.css";
+import { Vector } from "./Vector";
 
 const canvas = document.querySelector<HTMLCanvasElement>("#app")!;
 const ctx = canvas.getContext("2d")!;
 
-let screenCenter = {
-  x: 0,
-  y: 0,
-};
+let screenCenter = Vector.zero();
 
 window.addEventListener("resize", resizeCanvas, false);
 
 function resizeCanvas() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
-  screenCenter = {
-    x: Math.round(canvas.width / 2),
-    y: Math.round(canvas.height / 2),
-  };
+  screenCenter.set(Math.round(canvas.width / 2), Math.round(canvas.height / 2));
 }
 
 resizeCanvas();
 
 let timer = 0;
-let camera = {
-  x: 0,
-  y: 0,
-};
+let camera = Vector.zero();
 let scale = 1;
 let timeScale = 1;
+let showVelocity = false;
 
-type Vector = {
-  x: number;
-  y: number;
-};
-
-type Body = {
-  color: string;
-  position: Vector;
-  velocity: Vector;
-  mass: number;
-};
-
-const bodies: Body[] = [
+const bodies: CosmicBody[] = [
   {
-    color: "red",
-    mass: 10,
-    position: { x: 30, y: 30 },
-    velocity: { x: -2, y: 1 },
-  },
-  {
-    color: "yellow",
-    mass: 10,
-    position: { x: -30, y: -30 },
-    velocity: { x: 2, y: -1 },
+    color: "white",
+    mass: 1,
+    position: new Vector(30),
+    velocity: new Vector(1, -1),
   },
   {
     color: "white",
     mass: 1,
-    position: { x: -250, y: -40 },
-    velocity: { x: 2, y: -10 },
+    position: new Vector(-30),
+    velocity: new Vector(-1, 1),
   },
+  // {
+  //   color: "green",
+  //   mass: 1,
+  //   position: new Vector(0),
+  //   velocity: new Vector(0, 0.01),
+  // },
 ];
 
 function draw() {
@@ -93,6 +75,14 @@ function draw() {
       stroke = "red";
     }
 
+    ctx.globalAlpha = 0.2;
+    drawCircle(
+      pos.x,
+      pos.y,
+      15 + body.mass * 1.5 * Math.sign(body.mass),
+      body.color
+    );
+    ctx.globalAlpha = 1.0;
     drawCircle(
       pos.x,
       pos.y,
@@ -101,7 +91,7 @@ function draw() {
       stroke,
       2
     );
-    drawLine(pos.x, pos.y, pos.x + vel.x * 3, pos.y + vel.y * 3);
+    showVelocity && drawLine(pos.x, pos.y, pos.x + vel.x * 3, pos.y + vel.y * 3);
 
     pos.x += vel.x * timeScale;
     pos.y += vel.y * timeScale;
@@ -143,19 +133,19 @@ setInterval(() => {
 
 let lmbDown = false;
 let rmbDown = false;
-let rmbPoint: Vector = { x: 0, y: 0 };
-let mousePos: Vector = { x: 0, y: 0 };
+let rmbPoint = Vector.zero();
+let mousePos = Vector.zero();
 
-let cursorClientPos: Vector = { x: 0, y: 0 };
+let cursorClientPos = Vector.zero();
 
-let choosedBody: Body | null = null;
+let choosedBody: CosmicBody | null = null;
 
 canvas.addEventListener("mousedown", (e) => {
   e.preventDefault();
   if (e.button === 0) lmbDown = true;
   if (e.button === 2) {
     rmbDown = true;
-    rmbPoint = cursorToCoords(e);
+    rmbPoint = cursorToCoords(new Vector(e.clientX, e.clientY));
   }
   if (e.button === 1) {
     const previouslyChoosed = choosedBody;
@@ -180,25 +170,21 @@ canvas.addEventListener("mouseup", (e) => {
   if (e.button === 0) lmbDown = false;
   if (e.button === 2) {
     rmbDown = false;
-    const velocity: Vector = {
-      x: (rmbPoint.x - mousePos.x) / 10,
-      y: (rmbPoint.y - mousePos.y) / 10,
-    };
-    const newBody: Body = {
+    const newBody: CosmicBody = {
+      name: '',
       color: "white",
       mass: 1,
-      position: { x: rmbPoint.x, y: rmbPoint.y },
-      velocity,
+      position: Vector.copy(rmbPoint),
+      velocity: Vector.copy(rmbPoint).sub(mousePos).div(10),
     };
     bodies.push(newBody);
   }
 });
 canvas.addEventListener("mousemove", (e) => {
-  cursorClientPos = { x: e.clientX, y: e.clientY };
-  const delta = { x: e.movementX, y: e.movementY };
+  cursorClientPos.set(e.clientX, e.clientY);
+  const delta = new Vector(e.movementX, e.movementY);
   if (lmbDown) {
-    camera.x += delta.x / scale;
-    camera.y += delta.y / scale;
+    camera.add(Vector.copy(delta.div(scale)));
   }
 });
 canvas.addEventListener("wheel", (e) => {
@@ -212,16 +198,13 @@ timeRangeInput.addEventListener("input", function () {
 });
 
 function cursorToCoords(cursorPos: Vector): Vector {
-  const offX = choosedBody
-    ? -choosedBody.position.x - choosedBody.velocity.x
-    : camera.x;
-  const offY = choosedBody
-    ? -choosedBody.position.y - choosedBody.velocity.y
-    : camera.y;
-  return {
-    x: (cursorPos.x - screenCenter.x) / scale - offX,
-    y: (cursorPos.y - screenCenter.y) / scale - offY,
-  };
+  const offset = choosedBody
+    ? Vector.difference(
+        choosedBody.velocity,
+        Vector.copy(choosedBody.position).mult(-1)
+      )
+    : camera;
+  return Vector.copy(cursorPos).sub(screenCenter).div(scale).sub(offset);
 }
 
 function drawText(text: string, x: number, y: number, color = "white") {
